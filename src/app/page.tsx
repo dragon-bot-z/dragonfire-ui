@@ -1,65 +1,309 @@
-import Image from "next/image";
+'use client';
+
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { formatUnits, parseUnits, maxUint256 } from 'viem';
+import { useState, useEffect } from 'react';
+import {
+  DRAGONFIRE_ADDRESS,
+  DRAGON_TOKEN_ADDRESS,
+  DRAGONFIRE_ABI,
+  ERC20_ABI,
+} from '@/lib/contracts';
+
+function formatPrice(price: bigint): string {
+  const formatted = formatUnits(price, 18);
+  const num = parseFloat(formatted);
+  if (num >= 1000000) return `${(num / 1000000).toFixed(2)}M`;
+  if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+  return num.toFixed(2);
+}
+
+function formatTime(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
 
 export default function Home() {
+  const { address, isConnected } = useAccount();
+  const [timeLeft, setTimeLeft] = useState<number>(0);
+
+  // Read contract state
+  const { data: currentPrice, refetch: refetchPrice } = useReadContract({
+    address: DRAGONFIRE_ADDRESS,
+    abi: DRAGONFIRE_ABI,
+    functionName: 'currentPrice',
+  });
+
+  const { data: timeUntilLock, refetch: refetchTime } = useReadContract({
+    address: DRAGONFIRE_ADDRESS,
+    abi: DRAGONFIRE_ABI,
+    functionName: 'timeUntilLock',
+  });
+
+  const { data: isActive } = useReadContract({
+    address: DRAGONFIRE_ADDRESS,
+    abi: DRAGONFIRE_ABI,
+    functionName: 'isActive',
+  });
+
+  const { data: totalSupply, refetch: refetchSupply } = useReadContract({
+    address: DRAGONFIRE_ADDRESS,
+    abi: DRAGONFIRE_ABI,
+    functionName: 'totalSupply',
+  });
+
+  const { data: totalBurned, refetch: refetchBurned } = useReadContract({
+    address: DRAGONFIRE_ADDRESS,
+    abi: DRAGONFIRE_ABI,
+    functionName: 'totalDragonBurned',
+  });
+
+  const { data: locked } = useReadContract({
+    address: DRAGONFIRE_ADDRESS,
+    abi: DRAGONFIRE_ABI,
+    functionName: 'locked',
+  });
+
+  // User balances
+  const { data: dragonBalance, refetch: refetchDragonBalance } = useReadContract({
+    address: DRAGON_TOKEN_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+  });
+
+  const { data: allowance, refetch: refetchAllowance } = useReadContract({
+    address: DRAGON_TOKEN_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: 'allowance',
+    args: address ? [address, DRAGONFIRE_ADDRESS] : undefined,
+  });
+
+  // Write functions
+  const { writeContract: approve, data: approveTxHash, isPending: isApproving } = useWriteContract();
+  const { writeContract: mint, data: mintTxHash, isPending: isMinting } = useWriteContract();
+
+  const { isLoading: isApproveConfirming, isSuccess: isApproveSuccess } = useWaitForTransactionReceipt({
+    hash: approveTxHash,
+  });
+
+  const { isLoading: isMintConfirming, isSuccess: isMintSuccess } = useWaitForTransactionReceipt({
+    hash: mintTxHash,
+  });
+
+  // Countdown timer
+  useEffect(() => {
+    if (timeUntilLock) {
+      setTimeLeft(Number(timeUntilLock));
+    }
+  }, [timeUntilLock]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Refresh data periodically
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refetchPrice();
+      refetchTime();
+      refetchSupply();
+      refetchBurned();
+      if (address) {
+        refetchDragonBalance();
+        refetchAllowance();
+      }
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [address, refetchPrice, refetchTime, refetchSupply, refetchBurned, refetchDragonBalance, refetchAllowance]);
+
+  // Refetch after approve success
+  useEffect(() => {
+    if (isApproveSuccess) {
+      refetchAllowance();
+    }
+  }, [isApproveSuccess, refetchAllowance]);
+
+  // Refetch after mint success
+  useEffect(() => {
+    if (isMintSuccess) {
+      refetchPrice();
+      refetchTime();
+      refetchSupply();
+      refetchBurned();
+      refetchDragonBalance();
+    }
+  }, [isMintSuccess, refetchPrice, refetchTime, refetchSupply, refetchBurned, refetchDragonBalance]);
+
+  const needsApproval = currentPrice && allowance !== undefined && allowance < currentPrice;
+  const hasEnoughBalance = currentPrice && dragonBalance !== undefined && dragonBalance >= currentPrice;
+
+  const handleApprove = () => {
+    approve({
+      address: DRAGON_TOKEN_ADDRESS,
+      abi: ERC20_ABI,
+      functionName: 'approve',
+      args: [DRAGONFIRE_ADDRESS, maxUint256],
+    });
+  };
+
+  const handleMint = () => {
+    mint({
+      address: DRAGONFIRE_ADDRESS,
+      abi: DRAGONFIRE_ABI,
+      functionName: 'mint',
+    });
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <main className="min-h-screen flex flex-col items-center justify-center p-8">
+      <div className="max-w-lg w-full space-y-8">
+        {/* Header */}
+        <div className="text-center space-y-4">
+          <h1 className="text-6xl font-bold">
+            <span className="text-orange-500">Dragon</span>
+            <span className="text-red-500">Fire</span>
+            <span className="ml-2">🔥</span>
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-gray-400 text-lg">
+            Burn $DRAGON → Mint $FIRE
+          </p>
+          <p className="text-gray-500 text-sm">
+            100% onchain SVG • Dutch auction • 24h clock
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
+
+        {/* Connect Button */}
+        <div className="flex justify-center">
+          <ConnectButton />
+        </div>
+
+        {/* Status Card */}
+        <div className="bg-gray-900 rounded-2xl p-6 space-y-4 border border-gray-800">
+          {locked ? (
+            <div className="text-center py-8">
+              <p className="text-red-500 text-2xl font-bold">🔒 LOCKED FOREVER</p>
+              <p className="text-gray-500 mt-2">The collection has been sealed.</p>
+            </div>
+          ) : (
+            <>
+              {/* Timer */}
+              <div className="text-center">
+                <p className="text-gray-500 text-sm uppercase tracking-wide">Time Until Lock</p>
+                <p className={`text-4xl font-mono font-bold ${timeLeft < 3600 ? 'text-red-500' : timeLeft < 7200 ? 'text-orange-500' : 'text-green-500'}`}>
+                  {formatTime(timeLeft)}
+                </p>
+              </div>
+
+              {/* Price */}
+              <div className="text-center border-t border-gray-800 pt-4">
+                <p className="text-gray-500 text-sm uppercase tracking-wide">Current Price</p>
+                <p className="text-3xl font-bold text-orange-500">
+                  {currentPrice ? formatPrice(currentPrice) : '...'} <span className="text-lg text-gray-400">$DRAGON</span>
+                </p>
+              </div>
+
+              {/* Stats */}
+              <div className="grid grid-cols-2 gap-4 border-t border-gray-800 pt-4">
+                <div className="text-center">
+                  <p className="text-gray-500 text-sm">Fires Minted</p>
+                  <p className="text-xl font-bold">{totalSupply?.toString() ?? '...'}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-gray-500 text-sm">$DRAGON Burned</p>
+                  <p className="text-xl font-bold text-red-500">
+                    {totalBurned ? formatPrice(totalBurned) : '...'}
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Mint Section */}
+        {isConnected && !locked && (
+          <div className="bg-gray-900 rounded-2xl p-6 space-y-4 border border-gray-800">
+            {/* User Balance */}
+            <div className="text-center">
+              <p className="text-gray-500 text-sm">Your $DRAGON Balance</p>
+              <p className="text-xl font-bold">
+                {dragonBalance ? formatPrice(dragonBalance) : '0'}
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="space-y-3">
+              {needsApproval ? (
+                <button
+                  onClick={handleApprove}
+                  disabled={isApproving || isApproveConfirming}
+                  className="w-full py-4 px-6 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-700 disabled:cursor-not-allowed rounded-xl font-bold text-lg transition-colors"
+                >
+                  {isApproving || isApproveConfirming ? 'Approving...' : 'Approve $DRAGON'}
+                </button>
+              ) : (
+                <button
+                  onClick={handleMint}
+                  disabled={isMinting || isMintConfirming || !hasEnoughBalance}
+                  className="w-full py-4 px-6 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 disabled:from-gray-700 disabled:to-gray-700 disabled:cursor-not-allowed rounded-xl font-bold text-lg transition-all"
+                >
+                  {isMinting || isMintConfirming
+                    ? '🔥 Minting...'
+                    : !hasEnoughBalance
+                    ? 'Insufficient $DRAGON'
+                    : '🔥 Burn & Mint Fire'}
+                </button>
+              )}
+            </div>
+
+            {/* Success Message */}
+            {isMintSuccess && (
+              <div className="text-center text-green-500 font-bold">
+                🎉 Fire minted! Clock reset.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Footer Links */}
+        <div className="flex justify-center gap-6 text-sm text-gray-500">
           <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+            href={`https://basescan.org/address/${DRAGONFIRE_ADDRESS}`}
             target="_blank"
             rel="noopener noreferrer"
+            className="hover:text-orange-500 transition-colors"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
+            Contract ↗
           </a>
           <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+            href="https://github.com/dragon-bot-z/dragon-fire"
             target="_blank"
             rel="noopener noreferrer"
+            className="hover:text-orange-500 transition-colors"
           >
-            Documentation
+            GitHub ↗
+          </a>
+          <a
+            href={`https://app.uniswap.org/swap?chain=base&outputCurrency=${DRAGON_TOKEN_ADDRESS}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-orange-500 transition-colors"
+          >
+            Get $DRAGON ↗
           </a>
         </div>
-      </main>
-    </div>
+
+        {/* Lore */}
+        <div className="text-center text-gray-600 text-sm italic">
+          &quot;The dragon didn&apos;t need a token. You made one anyway. Now watch it burn.&quot;
+        </div>
+      </div>
+    </main>
   );
 }
