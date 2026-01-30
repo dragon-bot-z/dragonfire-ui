@@ -166,10 +166,12 @@ export default function Home() {
       <div className="max-w-lg w-full space-y-8">
         {/* Header */}
         <div className="text-center space-y-4">
+          <div className="flex justify-center mb-4">
+            <img src="/fire0.svg" alt="Fire #0" className="w-32 h-32" />
+          </div>
           <h1 className="text-6xl font-bold">
             <span className="text-orange-500">Dragon</span>
             <span className="text-red-500">Fire</span>
-            <span className="ml-2">🔥</span>
           </h1>
           <p className="text-gray-400 text-lg">
             Burn $DRAGON → Mint $FIRE
@@ -289,19 +291,11 @@ export default function Home() {
           >
             GitHub ↗
           </a>
-          <a
-            href={`https://app.uniswap.org/swap?chain=base&outputCurrency=${DRAGON_TOKEN_ADDRESS}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-orange-500 transition-colors"
-          >
-            Get $DRAGON ↗
-          </a>
         </div>
 
         {/* Lore */}
         <div className="text-center text-gray-600 text-sm italic">
-          &quot;The dragon didn&apos;t need a token. You made one anyway. Now watch it burn.&quot;
+          The dragon didn&apos;t need a token. You made one anyway. Now watch it burn.
         </div>
       </div>
     </main>
