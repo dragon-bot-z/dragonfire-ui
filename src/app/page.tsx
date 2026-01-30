@@ -268,6 +268,14 @@ export default function Home() {
         {/* Footer Links */}
         <div className="flex justify-center gap-6 text-sm text-gray-500">
           <a
+            href="https://opensea.io/collection/dragon-fire-475567302"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-orange-500 transition-colors"
+          >
+            OpenSea ↗
+          </a>
+          <a
             href={`https://basescan.org/address/${DRAGONFIRE_ADDRESS}`}
             target="_blank"
             rel="noopener noreferrer"
@@ -282,6 +290,16 @@ export default function Home() {
             className="hover:text-orange-500 transition-colors"
           >
             GitHub ↗
+          </a>
+        </div>
+
+        {/* Back to Home */}
+        <div className="flex justify-center">
+          <a
+            href="/"
+            className="text-gray-500 hover:text-orange-500 transition-colors text-sm"
+          >
+            ← Back to Dragon's Lair
           </a>
         </div>
 
