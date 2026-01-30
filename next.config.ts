@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Serve from /dragonfire subfolder when proxied through dragons.bot
+  basePath: '/dragonfire',
+  // Ensure assets also load from /dragonfire
+  assetPrefix: '/dragonfire',
 };
 
 export default nextConfig;
