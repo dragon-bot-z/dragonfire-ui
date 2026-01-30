@@ -167,7 +167,7 @@ export default function Home() {
         {/* Header */}
         <div className="text-center space-y-4">
           <div className="flex justify-center mb-4">
-            <img src="/fire0.svg" alt="Fire #0" className="w-32 h-32" />
+            <img src="/fire/fire0.svg" alt="Fire #0" className="w-32 h-32" />
           </div>
           <h1 className="text-6xl font-bold">
             <span className="text-orange-500">Dragon</span>
