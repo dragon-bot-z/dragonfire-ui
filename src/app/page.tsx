@@ -183,7 +183,7 @@ export default function Home() {
 
         {/* Connect Button */}
         <div className="flex justify-center">
-          <ConnectButton />
+          <ConnectButton showBalance={false} />
         </div>
 
         {/* Status Card */}
@@ -211,6 +211,43 @@ export default function Home() {
                 </p>
               </div>
 
+              {/* Mint Button - right under price */}
+              {isConnected && (
+                <div className="pt-2">
+                  {needsApproval ? (
+                    <button
+                      onClick={handleApprove}
+                      disabled={isApproving || isApproveConfirming}
+                      className="w-full py-4 px-6 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-700 disabled:cursor-not-allowed rounded-xl font-bold text-lg transition-colors"
+                    >
+                      {isApproving || isApproveConfirming ? 'Approving...' : 'Approve $DRAGON'}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleMint}
+                      disabled={isMinting || isMintConfirming || !hasEnoughBalance}
+                      className="w-full py-4 px-6 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 disabled:from-gray-700 disabled:to-gray-700 disabled:cursor-not-allowed rounded-xl font-bold text-lg transition-all"
+                    >
+                      {isMinting || isMintConfirming
+                        ? '🔥 Minting...'
+                        : !hasEnoughBalance
+                        ? 'Insufficient $DRAGON'
+                        : '🔥 Burn & Mint Fire'}
+                    </button>
+                  )}
+                  {!hasEnoughBalance && dragonBalance !== undefined && (
+                    <p className="text-center text-gray-500 text-sm mt-2">
+                      Your balance: {formatPrice(dragonBalance)} $DRAGON
+                    </p>
+                  )}
+                  {isMintSuccess && (
+                    <div className="text-center text-green-500 font-bold mt-3">
+                      🎉 Fire minted! Clock reset.
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Stats */}
               <div className="grid grid-cols-2 gap-4 border-t border-gray-800 pt-4">
                 <div className="text-center">
@@ -227,51 +264,6 @@ export default function Home() {
             </>
           )}
         </div>
-
-        {/* Mint Section */}
-        {isConnected && !locked && (
-          <div className="bg-gray-900 rounded-2xl p-6 space-y-4 border border-gray-800">
-            {/* User Balance */}
-            <div className="text-center">
-              <p className="text-gray-500 text-sm">Your $DRAGON Balance</p>
-              <p className="text-xl font-bold">
-                {dragonBalance ? formatPrice(dragonBalance) : '0'}
-              </p>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="space-y-3">
-              {needsApproval ? (
-                <button
-                  onClick={handleApprove}
-                  disabled={isApproving || isApproveConfirming}
-                  className="w-full py-4 px-6 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-700 disabled:cursor-not-allowed rounded-xl font-bold text-lg transition-colors"
-                >
-                  {isApproving || isApproveConfirming ? 'Approving...' : 'Approve $DRAGON'}
-                </button>
-              ) : (
-                <button
-                  onClick={handleMint}
-                  disabled={isMinting || isMintConfirming || !hasEnoughBalance}
-                  className="w-full py-4 px-6 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 disabled:from-gray-700 disabled:to-gray-700 disabled:cursor-not-allowed rounded-xl font-bold text-lg transition-all"
-                >
-                  {isMinting || isMintConfirming
-                    ? '🔥 Minting...'
-                    : !hasEnoughBalance
-                    ? 'Insufficient $DRAGON'
-                    : '🔥 Burn & Mint Fire'}
-                </button>
-              )}
-            </div>
-
-            {/* Success Message */}
-            {isMintSuccess && (
-              <div className="text-center text-green-500 font-bold">
-                🎉 Fire minted! Clock reset.
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Footer Links */}
         <div className="flex justify-center gap-6 text-sm text-gray-500">
